@@ -4,3 +4,4 @@ Flask-SQLAlchemy
 python-dotenv
 PyMySQL
 pytest
+bcrypt           # ← nova dependência para hash de senha

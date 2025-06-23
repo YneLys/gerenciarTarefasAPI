@@ -2,22 +2,43 @@ from flask import Blueprint, request, jsonify
 from . import db
 from .models import User, Task
 from flask_jwt_extended import create_access_token, jwt_required
+import bcrypt
 
 bp = Blueprint('main', __name__)
 
+# ---------- CADASTRO DE USUÁRIO ----------
+@bp.route("/register", methods=["POST"])
+def register():
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
+
+    # Verifica se usuário já existe
+    if User.query.filter_by(username=username).first():
+        return jsonify({"msg": "Usuário já existe"}), 400
+
+    # Hash seguro da senha
+    hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    user = User(username=username, password=hashed_pw)
+    db.session.add(user)
+    db.session.commit()
+    return jsonify({"msg": "Usuário criado com sucesso"}), 201
+
+# ---------- LOGIN ----------
 @bp.route("/login", methods=["POST"])
 def login():
     data = request.get_json()
     username = data.get("username")
     password = data.get("password")
 
-    user = User.query.filter_by(username=username, password=password).first()
-    if not user:
+    user = User.query.filter_by(username=username).first()
+    if not user or not bcrypt.checkpw(password.encode(), user.password.encode()):
         return jsonify({"msg": "Credenciais inválidas"}), 401
 
     token = create_access_token(identity=user.id)
     return jsonify(access_token=token)
 
+# ---------- CRUD DE TAREFAS ----------
 @bp.route("/tasks", methods=["GET"])
 @jwt_required()
 def get_tasks():
